@@ -13,16 +13,19 @@ pipeline {
         }
         stage('Build') {
             steps {
+                sh 'chmod +x mvnw'
                 sh './mvnw -B clean compile'
             }
         }
         stage('Test') {
             steps {
+                sh 'chmod +x mvnw'
                 sh './mvnw -B test'
             }
         }
         stage('Package') {
             steps {
+                sh 'chmod +x mvnw'
                 sh './mvnw -B package -DskipTests'
             }
         }
