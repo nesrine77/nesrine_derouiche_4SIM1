@@ -1,34 +1,19 @@
-pipeline {
-    agent any
-    triggers {
-        githubPush()
+node {
+    stage('Checkout') {
+        deleteDir()
+        git branch: 'main', 
+            url: 'https://github.com/nesrine77/nesrine_derouiche_4SIM1.git'
     }
-    stages {
-        stage('Build') {
-            steps {
-                sh 'chmod +x mvnw'
-                sh './mvnw -B clean compile'
-            }
-        }
-        stage('Test') {
-            steps {
-                sh 'chmod +x mvnw'
-                sh './mvnw -B test'
-            }
-        }
-        stage('Package') {
-            steps {
-                sh 'chmod +x mvnw'
-                sh './mvnw -B package -DskipTests'
-            }
-        }
+    stage('Build') {
+        sh 'chmod +x mvnw'
+        sh './mvnw -B clean compile'
     }
-    post {
-        success {
-            echo 'Build successful!'
-        }
-        failure {
-            echo 'Build failed!'
-        }
+    stage('Test') {
+        sh 'chmod +x mvnw'
+        sh './mvnw -B test'
+    }
+    stage('Package') {
+        sh 'chmod +x mvnw'
+        sh './mvnw -B package -DskipTests'
     }
 }
