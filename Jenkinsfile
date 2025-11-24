@@ -13,17 +13,17 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'mvn clean compile'
+                sh './mvnw -B clean compile'
             }
         }
         stage('Test') {
             steps {
-                sh 'mvn test'
+                sh './mvnw -B test'
             }
         }
         stage('Package') {
             steps {
-                sh 'mvn package -DskipTests'
+                sh './mvnw -B package -DskipTests'
             }
         }
     }
