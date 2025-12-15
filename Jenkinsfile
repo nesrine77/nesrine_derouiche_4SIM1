@@ -9,7 +9,7 @@ pipeline {
         IMAGE_NAME = 'nesrine77/nesrine_derouiche_4SIM1'
         // SonarQube configuration
         SONARQUBE_SERVER = 'SonarQube'
-        SONAR_PROJECT_KEY = 'nesrine77_student-management_9e2a077b-3049-4a9a-9c0f-cdd057d5f477'
+        SONAR_PROJECT_KEY = 'nesrine77_nesrine_derouiche_4SIM1_1f7d1c82-5374-4563-9085-6e08f2db26fd'
         SONAR_PROJECT_NAME = 'student-management'
         SONAR_HOST_URL = 'http://192.168.33.10:9000'
     }
