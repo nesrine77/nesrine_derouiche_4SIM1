@@ -1,59 +1,101 @@
 pipeline {
     agent any
-    environment {
-        IMAGE_NAME = "nesrine77/student-management"  // change to your Docker Hub repo if different
-        REGISTRY = "docker.io"
+    
+    tools {
+        maven 'Maven'
     }
+    
+    environment {
+        IMAGE_NAME = 'nesrine77/nesrine_derouiche_4SIM1'
+        // SonarQube configuration
+        SONARQUBE_SERVER = 'SonarQube'
+        SONAR_PROJECT_KEY = 'nesrine77_student-management_9e2a077b-3049-4a9a-9c0f-cdd057d5f477'
+        SONAR_PROJECT_NAME = 'student-management'
+        SONAR_HOST_URL = 'http://192.168.33.10:9000'
+    }
+    
     triggers {
         githubPush()
-        pollSCM('H/5 * * * *')
     }
+    
     stages {
         stage('Checkout') {
             steps {
                 deleteDir()
-                git branch: 'main', url: 'https://github.com/nesrine77/nesrine_derouiche_4SIM1.git'
-            }
-        }
-        stage('Package') {
-            steps {
+                git branch: 'main', 
+                    url: 'https://github.com/nesrine77/nesrine_derouiche_4SIM1.git'
                 sh 'chmod +x mvnw'
-                sh './mvnw -B clean package'
             }
         }
-        stage('Docker Build') {
+        
+        stage('Build & Test') {
+            steps {
+                sh './mvnw clean test'
+            }
+        }
+        
+        stage('MVN SONARQUBE') {
+            steps {
+                withSonarQubeEnv("${env.SONARQUBE_SERVER}") {
+                    sh """
+                        ./mvnw sonar:sonar \
+                            -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName=${env.SONAR_PROJECT_NAME} \
+                            -Dsonar.host.url=http://192.168.33.10:9000
+                    """
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
             steps {
                 script {
-                    def shortCommit = sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()
-                    env.IMAGE_TAG = "${shortCommit}-${env.BUILD_NUMBER}"
+                    // Give SonarQube time to finalize the task status
+                    sleep(time: 5, unit: 'SECONDS')
                 }
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
+        
+        stage('Package') {
+            steps {
+                sh './mvnw package -DskipTests'
+            }
+        }
+        
+        stage('Docker Build') {
+            steps {
+                sh """
+                    docker build \
+                        -t ${env.IMAGE_NAME}:${env.BUILD_NUMBER} \
+                        -t ${env.IMAGE_NAME}:latest \
+                        .
+                """
+            }
+        }
+        
         stage('Docker Push') {
             steps {
-                // Requires Jenkins credential id 'dockerhub-creds' (username/password)
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo "Logging in to Docker Hub..."'
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker push ${IMAGE_NAME}:latest"
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                    sh """
+                        echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+                        docker push ${env.IMAGE_NAME}:${env.BUILD_NUMBER}
+                        docker push ${env.IMAGE_NAME}:latest
+                        docker logout
+                    """
                 }
             }
         }
     }
+    
     post {
-        always {
-            echo 'Pipeline finished.'
-        }
         success {
-            echo "Success: Image pushed -> ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+            echo 'Build and SonarQube analysis succeeded!'
         }
         failure {
-            echo 'Failure: check the build logs.'
-        }
-        unstable {
-            echo 'Unstable: tests or quality gates failed.'
+            echo 'Build or SonarQube analysis failed!'
         }
     }
 }
